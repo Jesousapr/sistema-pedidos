@@ -10,7 +10,7 @@ router.post('/registro', async (req, res) => {
     const senhaHash = await bcrypt.hash(senha, 10);
     const { data, error } = await supabase
       .from('usuarios')
-      .insert([{ nome, email, senha: senhaHash }])
+      .insert([{ nome, email, senha: senhaHash, perfil: 'cliente' }])
       .select();
     if (error) return res.status(400).json({ error: error.message });
     res.status(201).json({ message: 'Usuário criado com sucesso!', usuario: data[0] });
@@ -22,13 +22,17 @@ router.post('/registro', async (req, res) => {
 router.post('/login', async (req, res) => {
   const { email, senha } = req.body;
   try {
+    console.log('Tentando login com email:', email);
     const { data, error } = await supabase
       .from('usuarios')
       .select('*')
       .eq('email', email)
       .single();
+    console.log('Usuário encontrado:', data);
+    console.log('Erro supabase:', error);
     if (error || !data) return res.status(401).json({ error: 'Usuário não encontrado' });
     const senhaValida = await bcrypt.compare(senha, data.senha);
+    console.log('Senha válida:', senhaValida);
     if (!senhaValida) return res.status(401).json({ error: 'Senha incorreta' });
     const token = jwt.sign(
       { id: data.id, perfil: data.perfil },
@@ -37,6 +41,7 @@ router.post('/login', async (req, res) => {
     );
     res.json({ token, usuario: { id: data.id, nome: data.nome, perfil: data.perfil } });
   } catch (err) {
+    console.log('Erro interno:', err);
     res.status(500).json({ error: 'Erro interno do servidor' });
   }
 });
